@@ -8,12 +8,12 @@ import (
 	"strings"
 )
 
-// InteractiveOptions contains options for interactive mode
+// InteractiveOptions
 type InteractiveOptions struct {
 	ConfigPath string
 }
 
-// RunInteractiveMode runs the interactive shell
+// Interactive shell
 func RunInteractiveMode(sc *ShellCast, options InteractiveOptions) {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -50,10 +50,10 @@ func RunInteractiveMode(sc *ShellCast, options InteractiveOptions) {
 		switch cmd {
 		case "exit", "quit":
 			return
-			
+
 		case "help":
 			showHelp()
-			
+
 		case "stream":
 			if sc.config.RTMPUrl == "" {
 				fmt.Print("Enter RTMP URL: ")
@@ -69,34 +69,34 @@ func RunInteractiveMode(sc *ShellCast, options InteractiveOptions) {
 			if err := sc.StartStreaming(); err != nil {
 				fmt.Fprintf(os.Stderr, "Error starting stream: %v\n", err)
 			}
-			
+
 		case "stop":
 			if err := sc.StopStreaming(); err != nil {
 				fmt.Fprintf(os.Stderr, "Error stopping stream: %v\n", err)
 			}
-			
+
 		case "record":
 			if err := sc.StartRecording(); err != nil {
 				fmt.Fprintf(os.Stderr, "Error starting recording: %v\n", err)
 			}
-			
+
 		case "stoprecord":
 			if err := sc.StopRecording(); err != nil {
 				fmt.Fprintf(os.Stderr, "Error stopping recording: %v\n", err)
 			}
-			
+
 		case "theme":
 			if args == "" {
 				ListThemes()
 				continue
 			}
-			
+
 			if err := sc.config.ApplyTheme(args); err != nil {
 				fmt.Fprintf(os.Stderr, "Error applying theme: %v\n", err)
 			} else {
 				fmt.Printf("Applied theme: %s\n", args)
 			}
-			
+
 		case "timestamp":
 			switch args {
 			case "on":
@@ -108,72 +108,72 @@ func RunInteractiveMode(sc *ShellCast, options InteractiveOptions) {
 			default:
 				fmt.Println("Usage: timestamp [on|off]")
 			}
-			
+
 		case "size":
 			if args == "" {
-				fmt.Printf("Current screen size: %dx%d\n", 
+				fmt.Printf("Current screen size: %dx%d\n",
 					sc.config.ScreenWidth, sc.config.ScreenHeight)
 				continue
 			}
-			
+
 			var width, height int
 			if _, err := fmt.Sscanf(args, "%dx%d", &width, &height); err != nil {
 				fmt.Println("Usage: size WIDTHxHEIGHT (e.g., 1280x720)")
 				continue
 			}
-			
+
 			sc.config.ScreenWidth = width
 			sc.config.ScreenHeight = height
 			fmt.Printf("Screen size set to %dx%d\n", width, height)
-			
+
 		case "split":
 			// Parse command list
 			if args == "" {
 				fmt.Println("Usage: split \"command1\" \"command2\" ...")
 				continue
 			}
-			
+
 			// Very simple parsing for demonstration
 			commands := strings.Split(args, "\" \"")
 			commands[0] = strings.TrimPrefix(commands[0], "\"")
 			commands[len(commands)-1] = strings.TrimSuffix(commands[len(commands)-1], "\"")
-			
+
 			fmt.Printf("Running %d commands in split mode\n", len(commands))
 			if err := sc.ExecuteSplitCommands(commands); err != nil {
 				fmt.Fprintf(os.Stderr, "Error executing split commands: %v\n", err)
 			}
-			
+
 		case "fontsize":
 			if args == "" {
 				fmt.Printf("Current font size: %d\n", sc.config.FontSize)
 				continue
 			}
-			
+
 			var size int
 			if _, err := fmt.Sscanf(args, "%d", &size); err != nil {
 				fmt.Println("Usage: fontsize SIZE (e.g., 24)")
 				continue
 			}
-			
+
 			sc.config.FontSize = size
 			fmt.Printf("Font size set to %d\n", size)
-			
+
 		case "save":
 			if args == "" {
 				args = "shellcast_config.json"
 			}
-			
+
 			if err := sc.config.SaveConfig(args); err != nil {
 				fmt.Fprintf(os.Stderr, "Error saving config: %v\n", err)
 			} else {
 				fmt.Printf("Config saved to %s\n", args)
 			}
-			
+
 		case "load":
 			if args == "" {
 				args = "shellcast_config.json"
 			}
-			
+
 			config, err := LoadConfig(args)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
@@ -181,7 +181,7 @@ func RunInteractiveMode(sc *ShellCast, options InteractiveOptions) {
 				sc.config = config
 				fmt.Printf("Config loaded from %s\n", args)
 			}
-			
+
 		default:
 			if err := sc.ExecuteCommand(input); err != nil {
 				fmt.Fprintf(os.Stderr, "Command error: %v\n", err)

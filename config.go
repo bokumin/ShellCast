@@ -15,29 +15,28 @@ type Config struct {
 	FontColor       string `json:"font_color"`
 	BackgroundColor string `json:"background_color"`
 	OutputFile      string `json:"output_file"`
-	
-	// New customization options
-	ShowTimestamp   bool   `json:"show_timestamp"`
-	TimestampFormat string `json:"timestamp_format"`
-	ScreenWidth     int    `json:"screen_width"`
-	ScreenHeight    int    `json:"screen_height"`
-	RecordSession   bool   `json:"record_session"`
-	RecordPath      string `json:"record_path"`
-	SplitScreen     bool   `json:"split_screen"`
+
+	ShowTimestamp   bool     `json:"show_timestamp"`
+	TimestampFormat string   `json:"timestamp_format"`
+	ScreenWidth     int      `json:"screen_width"`
+	ScreenHeight    int      `json:"screen_height"`
+	RecordSession   bool     `json:"record_session"`
+	RecordPath      string   `json:"record_path"`
+	SplitScreen     bool     `json:"split_screen"`
 	SplitCommands   []string `json:"split_commands"`
-	ThemeName       string `json:"theme_name"`
+	ThemeName       string   `json:"theme_name"`
 }
 
-// ThemePreset represents a predefined color scheme
+// ThemePreset color schema
 type ThemePreset struct {
-	Name           string `json:"name"`
-	FontColor      string `json:"font_color"`
+	Name            string `json:"name"`
+	FontColor       string `json:"font_color"`
 	BackgroundColor string `json:"background_color"`
-	BorderColor    string `json:"border_color"`
-	HighlightColor string `json:"highlight_color"`
+	BorderColor     string `json:"border_color"`
+	HighlightColor  string `json:"highlight_color"`
 }
 
-// GetDefaultConfig returns the default configuration
+// Default configuration
 func GetDefaultConfig() Config {
 	return Config{
 		FFmpegPath:      "ffmpeg",
@@ -52,43 +51,43 @@ func GetDefaultConfig() Config {
 	}
 }
 
-// GetThemePresets returns predefined theme presets
+// Predefined theme presets
 func GetThemePresets() map[string]ThemePreset {
 	return map[string]ThemePreset{
 		"default": {
-			Name:           "Default",
-			FontColor:      "white",
+			Name:            "Default",
+			FontColor:       "white",
 			BackgroundColor: "black",
-			BorderColor:    "gray",
-			HighlightColor: "blue",
+			BorderColor:     "gray",
+			HighlightColor:  "blue",
 		},
 		"hacker": {
-			Name:           "Hacker",
-			FontColor:      "lime",
+			Name:            "Hacker",
+			FontColor:       "lime",
 			BackgroundColor: "black",
-			BorderColor:    "green",
-			HighlightColor: "red",
+			BorderColor:     "green",
+			HighlightColor:  "red",
 		},
 		"solarized": {
-			Name:           "Solarized",
-			FontColor:      "#839496",
+			Name:            "Solarized",
+			FontColor:       "#839496",
 			BackgroundColor: "#002b36",
-			BorderColor:    "#586e75",
-			HighlightColor: "#268bd2",
+			BorderColor:     "#586e75",
+			HighlightColor:  "#268bd2",
 		},
 		"light": {
-			Name:           "Light",
-			FontColor:      "#222222",
+			Name:            "Light",
+			FontColor:       "#222222",
 			BackgroundColor: "#f9f9f9",
-			BorderColor:    "#dddddd",
-			HighlightColor: "#0066cc",
+			BorderColor:     "#dddddd",
+			HighlightColor:  "#0066cc",
 		},
 		"monokai": {
-			Name:           "Monokai",
-			FontColor:      "#f8f8f2",
+			Name:            "Monokai",
+			FontColor:       "#f8f8f2",
 			BackgroundColor: "#272822",
-			BorderColor:    "#75715e",
-			HighlightColor: "#f92672",
+			BorderColor:     "#75715e",
+			HighlightColor:  "#f92672",
 		},
 	}
 }
@@ -100,7 +99,7 @@ func (c *Config) ApplyTheme(themeName string) error {
 	if !exists {
 		return fmt.Errorf("theme '%s' not found", themeName)
 	}
-	
+
 	c.ThemeName = themeName
 	c.FontColor = theme.FontColor
 	c.BackgroundColor = theme.BackgroundColor
@@ -113,25 +112,25 @@ func (c *Config) SaveConfig(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling config: %v", err)
 	}
-	
+
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("error creating directory: %v", err)
 		}
 	}
-	
+
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		return fmt.Errorf("error writing config file: %v", err)
 	}
-	
+
 	return nil
 }
 
 // LoadConfig loads the configuration from a file
 func LoadConfig(filePath string) (Config, error) {
 	config := GetDefaultConfig()
-	
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -139,11 +138,11 @@ func LoadConfig(filePath string) (Config, error) {
 		}
 		return config, fmt.Errorf("error reading config file: %v", err)
 	}
-	
+
 	if err := json.Unmarshal(data, &config); err != nil {
 		return config, fmt.Errorf("error unmarshaling config: %v", err)
 	}
-	
+
 	return config, nil
 }
 
@@ -152,7 +151,7 @@ func ListThemes() {
 	presets := GetThemePresets()
 	fmt.Println("Available themes:")
 	for name, theme := range presets {
-		fmt.Printf("- %s: Font: %s, Background: %s\n", 
+		fmt.Printf("- %s: Font: %s, Background: %s\n",
 			name, theme.FontColor, theme.BackgroundColor)
 	}
 }

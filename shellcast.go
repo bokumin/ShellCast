@@ -23,7 +23,6 @@ type ShellCast struct {
 	startTime    time.Time
 }
 
-// NewShellCast creates a new ShellCast instance
 func NewShellCast(config Config) *ShellCast {
 	return &ShellCast{
 		config:     config,
@@ -34,18 +33,15 @@ func NewShellCast(config Config) *ShellCast {
 	}
 }
 
-// ExecuteCommand runs a shell command and captures its output
 func (s *ShellCast) ExecuteCommand(command string) error {
-	// Split the command string into parts
 	parts := strings.Split(command, " ")
 	if len(parts) == 0 {
 		return fmt.Errorf("empty command")
 	}
 
-	// Create the command
 	cmd := exec.Command(parts[0], parts[1:]...)
+	cmd.Stdin = os.Stdin
 
-	// Get pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("error creating stdout pipe: %v", err)
@@ -91,7 +87,6 @@ func (s *ShellCast) ExecuteCommand(command string) error {
 		}
 	}()
 
-	// Process stderr
 	go func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
@@ -147,7 +142,6 @@ func (s *ShellCast) StartStreaming() error {
 		tmpFile.Close()
 	}
 
-	// Write current buffer to file
 	s.mutex.Lock()
 	err := os.WriteFile(s.config.OutputFile, []byte(s.outputBuffer), 0644)
 	s.mutex.Unlock()
@@ -254,7 +248,7 @@ func (s *ShellCast) StartRecording() error {
 	s.recordPath = filepath.Join(s.config.RecordPath, filename)
 
 	// Write header to recording file
-	header := fmt.Sprintf("ShellCast Recording - Started at %s\n", 
+	header := fmt.Sprintf("ShellCast Recording - Started at %s\n",
 		time.Now().Format(s.config.TimestampFormat))
 	header += fmt.Sprintf("Command: %s\n", strings.Join(os.Args, " "))
 	header += strings.Repeat("-", 80) + "\n\n"
@@ -276,7 +270,7 @@ func (s *ShellCast) StopRecording() error {
 
 	// Write footer to recording file
 	footer := fmt.Sprintf("\n\n%s\n", strings.Repeat("-", 80))
-	footer += fmt.Sprintf("Recording ended at %s\n", 
+	footer += fmt.Sprintf("Recording ended at %s\n",
 		time.Now().Format(s.config.TimestampFormat))
 	footer += fmt.Sprintf("Duration: %s\n", time.Since(s.startTime).Round(time.Second))
 
@@ -303,38 +297,38 @@ func (s *ShellCast) ExecuteSplitCommands(commands []string) error {
 	for i, cmd := range commands {
 		go func(idx int, command string) {
 			defer wg.Done()
-			
+
 			// Create a prefix for this command output
 			prefix := fmt.Sprintf("[CMD%d] ", idx+1)
-			
+
 			parts := strings.Split(command, " ")
 			if len(parts) == 0 {
 				fmt.Printf("%sEmpty command\n", prefix)
 				return
 			}
-			
+
 			// Create and execute the command
 			cmd := exec.Command(parts[0], parts[1:]...)
-			
+			cmd.Stdin = os.Stdin
 			// Get pipes for stdout and stderr
 			stdout, err := cmd.StdoutPipe()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%sError creating stdout pipe: %v\n", prefix, err)
 				return
 			}
-			
+
 			stderr, err := cmd.StderrPipe()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%sError creating stderr pipe: %v\n", prefix, err)
 				return
 			}
-			
+
 			// Start the command
 			if err := cmd.Start(); err != nil {
 				fmt.Fprintf(os.Stderr, "%sError starting command: %v\n", prefix, err)
 				return
 			}
-			
+
 			// Process stdout
 			go func() {
 				scanner := bufio.NewScanner(stdout)
@@ -342,22 +336,22 @@ func (s *ShellCast) ExecuteSplitCommands(commands []string) error {
 					line := scanner.Text()
 					formattedLine := s.formatOutput(prefix + line)
 					fmt.Println(formattedLine)
-					
+
 					// Add to buffer and recording if active
 					s.mutex.Lock()
 					s.outputBuffer += formattedLine + "\n"
 					s.mutex.Unlock()
-					
+
 					if s.streaming && s.config.OutputFile != "" {
 						appendToFile(s.config.OutputFile, formattedLine+"\n")
 					}
-					
+
 					if s.recording && s.recordPath != "" {
 						appendToFile(s.recordPath, formattedLine+"\n")
 					}
 				}
 			}()
-			
+
 			// Process stderr
 			go func() {
 				scanner := bufio.NewScanner(stderr)
@@ -365,22 +359,22 @@ func (s *ShellCast) ExecuteSplitCommands(commands []string) error {
 					line := scanner.Text()
 					formattedLine := s.formatOutput(prefix + line)
 					fmt.Fprintln(os.Stderr, formattedLine)
-					
+
 					// Add to buffer and recording if active
 					s.mutex.Lock()
 					s.outputBuffer += formattedLine + "\n"
 					s.mutex.Unlock()
-					
+
 					if s.streaming && s.config.OutputFile != "" {
 						appendToFile(s.config.OutputFile, formattedLine+"\n")
 					}
-					
+
 					if s.recording && s.recordPath != "" {
 						appendToFile(s.recordPath, formattedLine+"\n")
 					}
 				}
 			}()
-			
+
 			// Wait for command to finish
 			cmd.Wait()
 			fmt.Printf("%sCommand completed\n", prefix)
@@ -397,7 +391,7 @@ func (s *ShellCast) Cleanup() {
 	if s.streaming {
 		s.StopStreaming()
 	}
-	
+
 	if s.recording {
 		s.StopRecording()
 	}
