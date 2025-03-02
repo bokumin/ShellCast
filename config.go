@@ -24,7 +24,9 @@ type Config struct {
 	RecordPath      string   `json:"record_path"`
 	SplitScreen     bool     `json:"split_screen"`
 	SplitCommands   []string `json:"split_commands"`
-	ThemeName       string   `json:"theme_name"`
+	ThemeName      string   `json:"theme_name"`
+
+    EncoderPriority []string `json:"encoder_priority"`
 }
 
 // ThemePreset color schema
@@ -48,6 +50,13 @@ func GetDefaultConfig() Config {
 		ScreenHeight:    720,
 		RecordPath:      "./recordings",
 		ThemeName:       "default",
+		        EncoderPriority: []string{
+    "mpeg4",
+    "h264_nvenc",   
+    "h264_amf",     
+    "h264_vaapi",   
+    "libx264",     
+        },
 	}
 }
 

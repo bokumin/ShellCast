@@ -126,6 +126,21 @@ func (s *ShellCast) formatOutput(line string) string {
 	return line
 }
 
+func (s *ShellCast) selectEncoder() string {
+    checkEncoder := func(enc string) bool {
+        cmd := exec.Command(s.config.FFmpegPath, "-hide_banner", "-encoders")
+        output, _ := cmd.CombinedOutput()
+        return strings.Contains(string(output), enc)
+    }
+
+    for _, enc := range s.config.EncoderPriority {
+        if checkEncoder(enc) {
+            return enc
+        }
+    }
+    return "libx264" 
+}
+
 // StartStreaming starts the FFmpeg process to stream terminal output
 func (s *ShellCast) StartStreaming() error {
 	if s.streaming {
@@ -142,6 +157,11 @@ func (s *ShellCast) StartStreaming() error {
 		tmpFile.Close()
 	}
 
+    initialData := "ShellCast Streaming Initialized\n"
+    if err := os.WriteFile(s.config.OutputFile, []byte(initialData), 0644); err != nil {
+        return fmt.Errorf("error writing initial data to output file: %v", err)
+    }
+
 	s.mutex.Lock()
 	err := os.WriteFile(s.config.OutputFile, []byte(s.outputBuffer), 0644)
 	s.mutex.Unlock()
@@ -155,21 +175,32 @@ func (s *ShellCast) StartStreaming() error {
 		ffmpegPath = "ffmpeg" // Use from PATH
 	}
 
-	// Create complex filter for custom formatting
-	vfFilter := s.createVideoFilter()
 
-	args := []string{
-		"-re",
-		"-f", "concat",
-		"-safe", "0",
-		"-i", s.config.OutputFile,
-		"-vf", vfFilter,
-		"-c:v", "libx264",
-		"-preset", "ultrafast",
-		"-s", fmt.Sprintf("%dx%d", s.config.ScreenWidth, s.config.ScreenHeight),
-		"-f", "flv",
-		s.config.RTMPUrl,
-	}
+
+
+    encoder := s.selectEncoder()
+
+    args := []string{
+        "-f", "lavfi",
+        "-re",
+        "-i", fmt.Sprintf("color=size=%dx%d:rate=30:color=%s",
+            s.config.ScreenWidth,
+            s.config.ScreenHeight,
+            strings.ReplaceAll(s.config.BackgroundColor, "#", "0x")),
+        "-vf", fmt.Sprintf("drawtext=textfile=%s:reload=1:fontcolor=%s:fontsize=%d:x=20:y=20",
+            s.config.OutputFile,
+            s.config.FontColor,
+            s.config.FontSize),
+        "-c:v", encoder,
+        "-preset", "ultrafast",
+	"-strict", "-1",
+
+        "-f", "flv",
+        s.config.RTMPUrl,
+    }
+
+
+
 
 	cmd := exec.Command(ffmpegPath, args...)
 	cmd.Stdout = os.Stdout
@@ -189,18 +220,20 @@ func (s *ShellCast) StartStreaming() error {
 // createVideoFilter creates the FFmpeg video filter string
 func (s *ShellCast) createVideoFilter() string {
 	// Basic text display
-	filter := fmt.Sprintf("drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:fontcolor=%s:fontsize=%d:box=1:boxcolor=%s:x=20:y=20:text='%s'",
+	filter := fmt.Sprintf("drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:/etc/alternatives/fonts-conf:fontcolor=%s:fontsize=%d:box=1:boxcolor=%s:x=20:y=20:text='%s'",
 		s.config.FontColor,
 		s.config.FontSize,
 		s.config.BackgroundColor,
 		"%{eif\\:n\\:d}") // Line number will be added by FFmpeg
 
 	// Add timestamp if requested
-	if s.config.ShowTimestamp {
-		filter += ",drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:" +
-			fmt.Sprintf("fontcolor=%s:fontsize=%d:box=1:boxcolor=%s:x=w-200:y=20:text='%%{localtime}'",
-				s.config.FontColor, s.config.FontSize, s.config.BackgroundColor)
-	}
+if s.config.ShowTimestamp {
+    filter += ",drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:/etc/alternatives/fonts-conf:"+fmt.Sprintf("fontcolor=%s:fontsize=%d:box=1:boxcolor=%s:x=w-200:y=20:text='%%{pts\\:localtime\\:%s}'", 
+        s.config.FontColor, 
+        s.config.FontSize, 
+        s.config.BackgroundColor,
+        s.config.TimestampFormat)
+}
 
 	return filter
 }
@@ -343,7 +376,12 @@ func (s *ShellCast) ExecuteSplitCommands(commands []string) error {
 					s.mutex.Unlock()
 
 					if s.streaming && s.config.OutputFile != "" {
-						appendToFile(s.config.OutputFile, formattedLine+"\n")
+//						appendToFile(s.config.OutputFile, formattedLine+"\n")
+err := appendToFileWithFlush(s.config.OutputFile, formattedLine+"\n")
+if err != nil {
+    fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
+}
+
 					}
 
 					if s.recording && s.recordPath != "" {
@@ -407,4 +445,17 @@ func appendToFile(filename, text string) error {
 
 	_, err = file.WriteString(text)
 	return err
+}
+
+func appendToFileWithFlush(filename, text string) error {
+    file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
+    
+    if _, err := file.WriteString(text); err != nil {
+        return err
+    }
+    return file.Sync()  // バッファを即時フラッシュ
 }
